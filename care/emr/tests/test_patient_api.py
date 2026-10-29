@@ -1,5 +1,6 @@
 import datetime
 from secrets import choice
+from unittest.mock import patch
 
 import phonenumbers
 from django.urls import reverse
@@ -90,6 +91,36 @@ class TestPatientViewSet(CareAPITestBase):
         PatientCreateLock().release()
         response = self.client.post(self.base_url, patient_data, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    @patch("care.emr.api.viewsets.patient.PatientCreateLock")
+    def test_create_patient_fails_when_create_lock_is_held(self, lock_class):
+        """Patient creation should fail while the global create lock is held."""
+        from care.utils.lock import ObjectLocked
+
+        user = self.create_user()
+        geo_organization = self.create_organization(org_type="govt")
+        patient_data = self.generate_patient_data(
+            geo_organization=geo_organization.external_id
+        )
+        organization = self.create_organization(org_type="govt")
+        role = self.create_role_with_permissions(
+            permissions=[PatientPermissions.can_create_patient.name]
+        )
+        self.attach_role_organization_user(organization, user, role)
+        self.client.force_authenticate(user=user)
+
+        lock_class.return_value.acquire.side_effect = ObjectLocked()
+
+        response = self.client.post(
+            self.base_url, patient_data, format="json"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn(
+            "Patient creation failed, try again after a while",
+            str(response.data),
+        )
+
 
     def test_create_patient_unauthorization(self):
         """Test patient creation with proper authorization"""

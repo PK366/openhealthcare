@@ -1,3 +1,4 @@
+import logging
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
@@ -39,6 +40,9 @@ from care.security.models import RoleModel
 from care.users.models import User
 from care.utils.lock import ObjectLocked
 from care.utils.shortcuts import get_object_or_404
+
+
+logger = logging.getLogger(__name__)
 
 
 class PatientFilters(FilterSet):
@@ -120,12 +124,20 @@ class PatientViewSet(EMRModelViewSet):
     def perform_create(self, instance):
         identifiers = instance._identifiers  # noqa: SLF001
         lock = PatientCreateLock()
+
+        logger.info("PATIENT_CREATE_LOCK: attempting acquisition")
         try:
             lock.acquire()
         except ObjectLocked as e:
+            logger.warning(
+                "PATIENT_CREATE_LOCK: acquisition failed with ObjectLocked"
+            )
             raise ValidationError(
                 "Patient creation failed, try again after a while"
             ) from e
+
+        logger.info("PATIENT_CREATE_LOCK: acquisition succeeded")
+
         try:
             with transaction.atomic():
                 super().perform_create(instance)
@@ -155,6 +167,9 @@ class PatientViewSet(EMRModelViewSet):
                 )
             transaction.on_commit(lock.release)
         except Exception:
+            logger.exception(
+                "PATIENT_CREATE: failed after lock acquisition"
+            )
             lock.release()
             raise
 
