@@ -4,7 +4,7 @@ on:
   workflow_call:
     secrets:
       CODECOV_TOKEN:
-        required: true
+        required: false
     inputs:
       event_name:
         required: false
@@ -15,6 +15,8 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-24.04-arm
+    env:
+      COMPOSE_FILE: docker-compose.yaml:docker-compose.local.yaml
     steps:
       - uses: actions/checkout@v5
 
@@ -60,8 +62,7 @@ jobs:
 
       - name: Start services
         run: |
-          docker compose -f docker-compose.yaml -f docker-compose.local.yaml up -d --wait || \
-          (docker compose -f docker-compose.yaml -f docker-compose.local.yaml logs && exit 1)
+          docker compose up -d --wait || (docker compose logs && exit 1)
 
       - name: Check missing migrations
         run: make checkmigration
@@ -76,7 +77,19 @@ jobs:
       - name: Run tests
         run: make test-coverage
 
+      - name: Check Codecov token availability
+        id: codecov
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: |
+          if [ -n "$CODECOV_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Upload coverage report
+        if: steps.codecov.outputs.enabled == 'true'
         uses: codecov/codecov-action@v5
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
