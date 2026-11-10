@@ -16,7 +16,7 @@ jobs:
     name: Test
     runs-on: ubuntu-24.04-arm
     env:
-      COMPOSE_FILE: docker-compose.yaml:docker-compose.local.yaml
+      COMPOSE_FILE: docker-compose.yaml:docker-compose.local.yaml:docker-compose.ci.yaml
     steps:
       - uses: actions/checkout@v5
 
