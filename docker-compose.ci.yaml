@@ -1,6 +1,7 @@
 services:
   minio:
     image: ohc-minio:ci
+    pull_policy: build
     build:
       context: .
       dockerfile: docker/minio/Dockerfile.ci
