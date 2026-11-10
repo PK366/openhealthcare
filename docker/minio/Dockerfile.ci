@@ -1,0 +1,24 @@
+# Build native MinIO binaries for the architecture of the CI runner.
+FROM golang:1.27.1-bookworm AS minio-build
+
+ENV CGO_ENABLED=0
+
+RUN go install github.com/minio/minio@latest \
+    && go install github.com/minio/mc@latest
+
+# Keep the runtime image small; the project entrypoint and init scripts
+# are mounted by docker-compose.yaml.
+FROM debian:bookworm-slim
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=minio-build /go/bin/minio /usr/local/bin/minio
+COPY --from=minio-build /go/bin/mc /usr/local/bin/mc
+
+RUN chmod +x /usr/local/bin/minio /usr/local/bin/mc
+
+EXPOSE 9000 9001
+
+ENTRYPOINT ["minio"]
