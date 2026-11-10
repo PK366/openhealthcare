@@ -28,7 +28,12 @@ import DiagnosticReportPrint from "@/pages/Facility/services/diagnosticReports/D
 import DiagnosticReportView from "@/pages/Facility/services/diagnosticReports/DiagnosticReportView";
 import ServiceRequestShow from "@/pages/Facility/services/serviceRequests/ServiceRequestShow";
 import { SettingsLayout } from "@/pages/Facility/settings/layout";
-import OTSetup from "@/pages/Facility/ot/OTSetup";
+import OTSetupList from "@/pages/Facility/ot/otSetup/OTSetupList";
+import OTSetupForm from "@/pages/Facility/ot/otSetup/OTSetupForm";
+import SurgeryProcedureList from "@/pages/Facility/ot/surgeryProcedure/SurgeryProcedureList";
+import SurgeryProcedureForm from "@/pages/Facility/ot/surgeryProcedure/SurgeryProcedureForm";
+import AnaesthesiaList from "@/pages/Facility/ot/anaesthesia/AnaesthesiaList";
+import AnaesthesiaForm from "@/pages/Facility/ot/anaesthesia/AnaesthesiaForm";
 
 const FacilityRoutes: AppRoutes = {
   "/facility": () => <Redirect to="/" />,
@@ -36,7 +41,46 @@ const FacilityRoutes: AppRoutes = {
     <FacilityOverview facilityId={facilityId} />
   ),
   "/facility/:facilityId/ot/setup": ({ facilityId }) => (
-    <OTSetup facilityId={facilityId} />
+    <OTSetupList facilityId={facilityId} />
+  ),
+  "/facility/:facilityId/ot/setup/new": ({ facilityId }) => (
+    <OTSetupForm facilityId={facilityId} />
+  ),
+  "/facility/:facilityId/ot/setup/:roomId/edit": ({
+    facilityId,
+    roomId,
+  }) => (
+    <OTSetupForm facilityId={facilityId} roomId={roomId} />
+  ),
+  "/facility/:facilityId/ot/surgery-procedures": ({ facilityId }) => (
+    <SurgeryProcedureList facilityId={facilityId} />
+  ),
+  "/facility/:facilityId/ot/surgery-procedures/new": ({ facilityId }) => (
+    <SurgeryProcedureForm facilityId={facilityId} />
+  ),
+  "/facility/:facilityId/ot/surgery-procedures/:procedureId/edit": ({
+    facilityId,
+    procedureId,
+  }) => (
+    <SurgeryProcedureForm
+      facilityId={facilityId}
+      procedureId={procedureId}
+    />
+  ),
+  "/facility/:facilityId/ot/anaesthesia": ({ facilityId }) => (
+    <AnaesthesiaList facilityId={facilityId} />
+  ),
+  "/facility/:facilityId/ot/anaesthesia/new": ({ facilityId }) => (
+    <AnaesthesiaForm facilityId={facilityId} />
+  ),
+  "/facility/:facilityId/ot/anaesthesia/:anaesthesiaId/edit": ({
+    facilityId,
+    anaesthesiaId,
+  }) => (
+    <AnaesthesiaForm
+      facilityId={facilityId}
+      anaesthesiaId={anaesthesiaId}
+    />
   ),
   "/facility/:facilityId/bed-availability": ({ facilityId }) => (
     <BedAvailabilityDashboard facilityId={facilityId} />

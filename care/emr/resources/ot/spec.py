@@ -3,7 +3,7 @@ from enum import Enum
 from pydantic import UUID4, Field
 
 from care.emr.models.location import FacilityLocation
-from care.emr.models.ot import OTRoom, SurgeryProcedure, Anaesthesia
+from care.emr.models.ot import OTRoom, SurgeryProcedure, Anaesthesia, SurgeryAnaesthesiaConfig
 from care.emr.resources.base import EMRResource
 
 
@@ -26,6 +26,7 @@ class OTRoomSpec(OTRoomBaseSpec):
     description: str = ""
     equipment_details: list = Field(default_factory=list)
     status: OTRoomStatusChoices = OTRoomStatusChoices.available
+    surgery_procedures: list[UUID4] | None = None
 
     def perform_extra_deserialization(self, is_update, obj):
         location = FacilityLocation.objects.get(
@@ -33,6 +34,11 @@ class OTRoomSpec(OTRoomBaseSpec):
             deleted=False,
         )
         obj.location = location
+
+        # None means the field was not supplied; preserve existing selections.
+        # An empty list means clear all assigned procedures.
+        if self.surgery_procedures is not None:
+            obj._surgery_procedure_ids = self.surgery_procedures
 
 
 class OTRoomWriteSpec(OTRoomSpec):
@@ -54,6 +60,9 @@ class OTRoomListSpec(OTRoomSpec):
         mapping["id"] = obj.external_id
         mapping["location"] = str(obj.location.external_id)
         mapping["location_name"] = obj.location.name
+        mapping["surgery_procedures"] = list(
+            obj.surgery_procedures.values_list("external_id", flat=True)
+        )
         mapping["facility"] = {
             "id": str(obj.facility.external_id),
             "name": obj.facility.name,
@@ -191,6 +200,90 @@ class AnaesthesiaListSpec(AnaesthesiaSpec):
 
 
 class AnaesthesiaRetrieveSpec(AnaesthesiaListSpec):
+    created_by: dict | None = None
+    updated_by: dict | None = None
+
+    @classmethod
+    def perform_extra_serialization(cls, mapping, obj):
+        super().perform_extra_serialization(mapping, obj)
+        cls.serialize_audit_users(mapping, obj)
+
+
+# Surgery–Anaesthesia Configuration
+from decimal import Decimal
+
+
+class SurgeryAnaesthesiaConfigStatusChoices(str, Enum):
+    active = "active"
+    inactive = "inactive"
+
+
+class SurgeryAnaesthesiaConfigBaseSpec(EMRResource):
+    __model__ = SurgeryAnaesthesiaConfig
+    __exclude__ = ["facility", "surgery_procedure"]
+
+    id: UUID4 | None = None
+
+
+class SurgeryAnaesthesiaConfigSpec(SurgeryAnaesthesiaConfigBaseSpec):
+    surgery_procedure: UUID4
+    anaesthesia_format: str = Field(min_length=1, max_length=100)
+    age_range: str = ""
+    gender: str = ""
+    weight: Decimal | None = Field(default=None, ge=0)
+    condition: str = ""
+    dose: str = ""
+    status: SurgeryAnaesthesiaConfigStatusChoices = (
+        SurgeryAnaesthesiaConfigStatusChoices.active
+    )
+
+    def perform_extra_deserialization(self, is_update, obj):
+        # The ViewSet validates the procedure against the current facility.
+        procedure = SurgeryProcedure.objects.filter(
+            external_id=self.surgery_procedure,
+            deleted=False,
+        ).first()
+
+        if procedure is not None:
+            obj.surgery_procedure = procedure
+
+
+class SurgeryAnaesthesiaConfigWriteSpec(SurgeryAnaesthesiaConfigSpec):
+    pass
+
+
+class SurgeryAnaesthesiaConfigUpdateSpec(SurgeryAnaesthesiaConfigSpec):
+    pass
+
+
+class SurgeryAnaesthesiaConfigListSpec(SurgeryAnaesthesiaConfigSpec):
+    surgery_procedure_name: str | None = None
+    facility: dict | None = None
+    created_date: str | None = None
+    modified_date: str | None = None
+
+    @classmethod
+    def perform_extra_serialization(cls, mapping, obj):
+        mapping["id"] = str(obj.external_id)
+        mapping["surgery_procedure"] = str(
+            obj.surgery_procedure.external_id
+        )
+        mapping["surgery_procedure_name"] = (
+            obj.surgery_procedure.procedure_name
+        )
+        mapping["facility"] = {
+            "id": str(obj.facility.external_id),
+            "name": obj.facility.name,
+        }
+        mapping["created_date"] = (
+            obj.created_date.isoformat() if obj.created_date else None
+        )
+        mapping["modified_date"] = (
+            obj.modified_date.isoformat() if obj.modified_date else None
+        )
+
+
+class SurgeryAnaesthesiaConfigRetrieveSpec(SurgeryAnaesthesiaConfigListSpec):
     created_by: dict | None = None
     updated_by: dict | None = None
 

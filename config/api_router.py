@@ -110,18 +110,24 @@ from care.security.api.viewsets.permissions import PermissionViewSet
 from care.security.api.viewsets.roles import RoleViewSet
 from care.users.api.otp_viewset.reset_password import OTPResetPasswordView
 from care.users.api.viewsets.plug_config import PlugConfigViewset
+from care.emr.api.viewsets.location import (
+    FacilityLocationEncounterViewSet,
+    FacilityLocationViewSet,
+)
+from care.emr.api.viewsets.ot import (
+    OTRoomViewSet,
+    SurgeryProcedureViewSet,
+    AnaesthesiaViewSet,
+    SurgeryAnaesthesiaConfigViewSet,
+)
 
 router = DefaultRouter() if settings.DEBUG else SimpleRouter()
 
 router.register("users", UserViewSet, basename="users")
-
 router.register("plug_config", PlugConfigViewset, basename="plug_configs")
-
 user_nested_router = NestedSimpleRouter(router, r"users", lookup="users")
-
 router.register("files", FileUploadViewSet, basename="files")
 router.register("meta_artifacts", MetaArtifactViewSet, basename="meta_artifacts")
-
 router.register("otp", OTPLoginView, basename="otp-login")
 router.register(
     "otp/password_reset", OTPResetPasswordView, basename="otp-password-reset"
@@ -282,6 +288,30 @@ facility_nested_router.register(
     r"location",
     FacilityLocationViewSet,
     basename="location",
+)
+
+facility_nested_router.register(
+    r"ot_room",
+    OTRoomViewSet,
+    basename="ot-room",
+)
+
+facility_nested_router.register(
+    r"surgery_procedure",
+    SurgeryProcedureViewSet,
+    basename="surgery-procedure",
+)
+
+facility_nested_router.register(
+    r"anaesthesia",
+    AnaesthesiaViewSet,
+    basename="anaesthesia",
+)
+
+facility_nested_router.register(
+    r"surgery_anaesthesia_config",
+    SurgeryAnaesthesiaConfigViewSet,
+    basename="surgery-anaesthesia-config",
 )
 
 facility_nested_router.register(

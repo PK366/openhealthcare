@@ -13,6 +13,7 @@ export interface OTRoom {
   description: string;
   equipment_details: string[];
   status: OTRoomStatus;
+  surgery_procedures: string[];
   facility?: {
     id: string;
     name: string;
@@ -26,6 +27,7 @@ export interface OTRoomWrite {
   description: string;
   equipment_details: string[];
   status: OTRoomStatus;
+  surgery_procedures: string[];
 }
 
 export default {

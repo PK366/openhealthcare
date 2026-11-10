@@ -24,6 +24,12 @@ class OTRoom(EMRBaseModel):
         blank=True,
     )
 
+    surgery_procedures = models.ManyToManyField(
+        "emr.SurgeryProcedure",
+        blank=True,
+        related_name="ot_rooms",
+    )
+
     status = models.CharField(
         max_length=20,
         choices=[
@@ -126,3 +132,53 @@ class Anaesthesia(EMRBaseModel):
 
     def __str__(self):
         return f"{self.anaesthesia_code} - {self.anaesthesia_name}"
+
+
+class SurgeryAnaesthesiaConfig(EMRBaseModel):
+    facility = models.ForeignKey(
+        "facility.Facility",
+        on_delete=models.PROTECT,
+        related_name="surgery_anaesthesia_configs",
+    )
+
+    surgery_procedure = models.ForeignKey(
+        "emr.SurgeryProcedure",
+        on_delete=models.PROTECT,
+        related_name="anaesthesia_configurations",
+    )
+
+    anaesthesia_format = models.CharField(max_length=100)
+
+    age_range = models.CharField(max_length=50, blank=True, default="")
+
+    gender = models.CharField(max_length=20, blank=True, default="")
+
+    weight = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+
+    condition = models.TextField(blank=True, default="")
+
+    dose = models.TextField(blank=True, default="")
+
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ("active", "Active"),
+            ("inactive", "Inactive"),
+        ],
+        default="active",
+    )
+
+    class Meta:
+        db_table = "emr_surgery_anaesthesia_config"
+        ordering = ["surgery_procedure__procedure_name", "anaesthesia_format"]
+
+    def __str__(self):
+        return (
+            f"{self.surgery_procedure.procedure_name} - "
+            f"{self.anaesthesia_format}"
+        )

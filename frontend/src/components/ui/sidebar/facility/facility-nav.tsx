@@ -104,6 +104,14 @@ function generateFacilityLinks(
           url: `${baseUrl}/ot/setup`,
         },
         {
+          name: "Surgery Procedure",
+          url: `${baseUrl}/ot/surgery-procedures`,
+        },
+        {
+          name: "Anaesthesia",
+          url: `${baseUrl}/ot/anaesthesia`,
+        },
+        {
           name: "OT Scheduling",
           url: `${baseUrl}/ot/scheduling`,
         },
