@@ -7,6 +7,9 @@ on:
 jobs:
   validate-jira-ticket:
     runs-on: ubuntu-24.04-arm
+    timeout-minutes: 5
+    permissions:
+      contents: read
     if: github.event.pull_request.user.type != 'Bot'
 
     steps:
