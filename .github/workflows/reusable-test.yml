@@ -126,6 +126,12 @@ jobs:
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
         run: make dump-db
 
+      - name: Collect Docker Compose diagnostics on failure
+        if: failure()
+        run: |
+          docker compose ps --all || true
+          docker compose logs --no-color --tail=200 || true
+
       - name: Upload db artifact
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
         uses: actions/upload-artifact@v5
@@ -134,3 +140,6 @@ jobs:
           path: care_db.dump
           retention-days: 30
           compression-level: 0 # file is already compressed
+      - name: Stop services and clean up
+        if: always()
+        run: docker compose down --volumes --remove-orphans || true
