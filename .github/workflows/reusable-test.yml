@@ -129,8 +129,18 @@ jobs:
       - name: Collect Docker Compose diagnostics on failure
         if: failure()
         run: |
-          docker compose ps --all || true
-          docker compose logs --no-color --tail=200 || true
+          mkdir -p "${{ runner.temp }}/ci-diagnostics"
+          docker compose ps --all > "${{ runner.temp }}/ci-diagnostics/compose-ps.txt" 2>&1 || true
+          docker compose logs --no-color --tail=200 > "${{ runner.temp }}/ci-diagnostics/compose-logs.txt" 2>&1 || true
+
+      - name: Upload CI diagnostics artifact
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: ci-diagnostics
+          path: ${{ runner.temp }}/ci-diagnostics/
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Upload db artifact
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
