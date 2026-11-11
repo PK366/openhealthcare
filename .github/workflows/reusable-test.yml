@@ -135,7 +135,7 @@ jobs:
 
       - name: Redact sensitive values from CI diagnostics
         id: redact
-        if: failure()
+        if: always()
         shell: bash
         run: |
           python3 - <<'PY'
@@ -201,7 +201,7 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: ci-diagnostics
-          path: \${{ runner.temp }}/ci-diagnostics/
+          path: ${{ runner.temp }}/ci-diagnostics/
           if-no-files-found: warn
           retention-days: 7
 
