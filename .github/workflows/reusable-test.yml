@@ -74,10 +74,6 @@ jobs:
       - name: Validate integrity of fixtures
         run: make load-fixtures
 
-      - name: Dump db
-        if: ${{ inputs.event_name == 'push' || github.event_name == 'push' }}
-        run: make dump-db
-
       - name: Run tests
         run: make test-coverage
 
