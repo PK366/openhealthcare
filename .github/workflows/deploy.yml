@@ -26,6 +26,9 @@ concurrency:
 #   CONTAINER_NAME_WORKER: "care-celery-worker"
 #   CONTAINER_NAME_CRON: "care-celery-beat"
 
+permissions:
+  contents: read
+
 jobs:
   test:
     if: github.repository == 'ohcnetwork/care'
@@ -38,6 +41,9 @@ jobs:
 
   build:
     needs: test
+    permissions:
+      contents: read
+      packages: write
     name: Build ${{ matrix.platform }}
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -122,6 +128,9 @@ jobs:
 
   merge-manifests:
     needs: build
+    permissions:
+      contents: read
+      packages: write
     name: Merge & Push Manifests
     runs-on: ubuntu-24.04
     steps:
