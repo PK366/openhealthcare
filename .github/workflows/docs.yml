@@ -4,11 +4,13 @@ on:
   push:
     branches:
       - develop
+      - staging
     paths:
       - "docs/**"
   pull_request:
     branches:
       - develop
+      - staging
     paths:
       - "docs/**"
   workflow_dispatch:
@@ -18,7 +20,6 @@ permissions:
 
 jobs:
   build-docs:
-    if: github.repository == 'ohcnetwork/care'
     name: Build docs
     runs-on: ubuntu-24.04-arm
     steps:
