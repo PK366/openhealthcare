@@ -3,6 +3,9 @@ name: Test Pull Request
 on:
   merge_group:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Test
