@@ -134,17 +134,14 @@ jobs:
           docker compose logs --no-color --tail=200 > "${{ runner.temp }}/ci-diagnostics/compose-logs.txt" 2>&1 || true
 
       - name: Redact sensitive values from CI diagnostics
-        if: failure()
+        id: redact
+        if: always()
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
           import os
-
-          diagnostics = Path(os.environ["RUNNER_TEMP"]) / "ci-diagnostics"
-          if not diagnostics.exists():
-              raise SystemExit(0)
+          import re
 
           assignment = re.compile(
               r'(?i)(\b(?:password|passwd|pwd|token|access[_-]?key|secret|'
@@ -162,21 +159,45 @@ jobs:
               r'(-----END [A-Z0-9 ]*PRIVATE KEY-----)'
           )
 
-          for path in diagnostics.glob("*.txt"):
-              data = path.read_text(errors="replace")
+          def redact(data):
               data = private_key.sub(r'\1[REDACTED PRIVATE KEY]\2', data)
+              data = bearer.sub(r'\1[REDACTED]', data)
               data = assignment.sub(r'\1[REDACTED]', data)
               data = query_value.sub(r'\1[REDACTED]', data)
-              data = bearer.sub(r'\1[REDACTED]', data)
               data = url_credentials.sub(r'\1[REDACTED]@', data)
               data = re.sub(r'\bAKIA[0-9A-Z]{16}\b', '[REDACTED AWS KEY]', data)
               data = re.sub(r'\bgh[pousr]_[A-Za-z0-9_]{20,}\b', '[REDACTED GITHUB TOKEN]', data)
               data = re.sub(r'\bgithub_pat_[A-Za-z0-9_]{20,}\b', '[REDACTED GITHUB TOKEN]', data)
-              path.write_text(data)
+              return data
+
+          # Exercise every supported redaction family using dummy values only.
+          cases = {
+              "password assignment": ("PASSWORD=DummyPass123", "DummyPass123"),
+              "quoted API key": ('api_key="DummyApiKey123"', "DummyApiKey123"),
+              "query parameter": ("https://example.test/?token=DummyQueryToken", "DummyQueryToken"),
+              "bearer token": ("Authorization: Bearer DummyBearerToken123", "DummyBearerToken123"),
+              "URL credentials": ("https://dummyuser:DummyUrlPass@example.test/path", "DummyUrlPass"),
+              "private key block": (
+                  "-----BEGIN PRIVATE KEY-----\nDummyPrivateKeyMaterial\n-----END PRIVATE KEY-----",
+                  "DummyPrivateKeyMaterial",
+              ),
+              "AWS access key": ("AKIAABCDEFGHIJKLMNOP", "AKIAABCDEFGHIJKLMNOP"),
+              "GitHub token": ("ghp_abcdefghijklmnopqrstuvwxyz1234567890", "ghp_abcdefghijklmnopqrstuvwxyz1234567890"),
+              "GitHub fine-grained token": ("github_pat_abcdefghijklmnopqrstuvwxyz1234567890", "github_pat_abcdefghijklmnopqrstuvwxyz1234567890"),
+          }
+          for label, (sample, secret) in cases.items():
+              cleaned = redact(sample)
+              if secret in cleaned or "[REDACTED" not in cleaned:
+                  raise SystemExit(f"Redaction self-test failed: {label}")
+
+          diagnostics = Path(os.environ["RUNNER_TEMP"]) / "ci-diagnostics"
+          if diagnostics.exists():
+              for path in diagnostics.glob("*.txt"):
+                  path.write_text(redact(path.read_text(errors="replace")))
           PY
 
       - name: Upload CI diagnostics artifact
-        if: failure()
+        if: failure() && steps.redact.outcome == 'success'
         uses: actions/upload-artifact@v5
         with:
           name: ci-diagnostics
