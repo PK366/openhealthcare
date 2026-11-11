@@ -161,9 +161,9 @@ jobs:
 
           def redact(data):
               data = private_key.sub(r'\1[REDACTED PRIVATE KEY]\2', data)
+              data = bearer.sub(r'\1[REDACTED]', data)
               data = assignment.sub(r'\1[REDACTED]', data)
               data = query_value.sub(r'\1[REDACTED]', data)
-              data = bearer.sub(r'\1[REDACTED]', data)
               data = url_credentials.sub(r'\1[REDACTED]@', data)
               data = re.sub(r'\bAKIA[0-9A-Z]{16}\b', '[REDACTED AWS KEY]', data)
               data = re.sub(r'\bgh[pousr]_[A-Za-z0-9_]{20,}\b', '[REDACTED GITHUB TOKEN]', data)
