@@ -77,6 +77,15 @@ jobs:
       - name: Run tests
         run: make test-coverage
 
+      - name: Upload backend coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: backend-coverage
+          path: coverage.xml
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Check Codecov token availability
         id: codecov
         env:
