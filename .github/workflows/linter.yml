@@ -13,6 +13,7 @@ permissions:
 jobs:
   lint:
     runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
         with:
