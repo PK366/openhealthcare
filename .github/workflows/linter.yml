@@ -7,6 +7,9 @@ on:
       - staging
   merge_group:
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-24.04-arm
@@ -56,6 +59,24 @@ jobs:
         working-directory: frontend
         run: npm ci --prefer-offline
 
-      - name: Run frontend ESLint
-        working-directory: frontend
-        run: npm run lint
+      - name: Run frontend ESLint on changed files
+        shell: bash
+        env:
+          BASE_SHA: ${{ steps.refs.outputs.base }}
+          HEAD_SHA: ${{ steps.refs.outputs.head }}
+        run: |
+          mapfile -d '' -t files < <(
+            git diff --name-only -z "$BASE_SHA" "$HEAD_SHA" -- frontend/src |
+            while IFS= read -r -d '' file; do
+              if [[ -f "$file" && "$file" =~ \.(js|jsx|ts|tsx)$ ]]; then
+                printf '%s\0' "$file"
+              fi
+            done
+          )
+
+          if (( ${#files[@]} == 0 )); then
+            echo "No changed frontend source files to lint."
+            exit 0
+          fi
+
+          npx --prefix frontend eslint "${files[@]}"
