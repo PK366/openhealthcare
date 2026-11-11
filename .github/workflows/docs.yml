@@ -13,6 +13,9 @@ on:
       - "docs/**"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build-docs:
     if: github.repository == 'ohcnetwork/care'
