@@ -9,10 +9,10 @@ permissions:
 
 jobs:
   validate-jira-ticket:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 5
     permissions:
       contents: read
-  validate-jira-ticket:
-    runs-on: ubuntu-24.04-arm
     if: github.event.pull_request.user.type != 'Bot'
 
     steps:
@@ -27,13 +27,13 @@ jobs:
             const prTitle = context.payload.pull_request.title;
 
             // Check that title starts with [ENG-456] format
-            const pattern = new RegExp(`^\\[(${jiraProjectKeys.join('|')})-\\d+\\]`, 'i');
+            const pattern = new RegExp(`^\\\\[(${jiraProjectKeys.join('|')})-\\\\d+\\\\]`, 'i');
 
             if (!pattern.test(prTitle)) {
               const examples = jiraProjectKeys.map(k => `[${k}-123]`).join(', ');
               core.setFailed(
-                `PR title must start with a JIRA ticket in brackets.\n` +
-                `Expected format: [PROJECT-NUMBER] title\n` +
+                `PR title must start with a JIRA ticket in brackets.\\n` +
+                `Expected format: [PROJECT-NUMBER] title\\n` +
                 `Examples: ${examples}`
               );
             }
