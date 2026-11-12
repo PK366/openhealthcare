@@ -62,7 +62,8 @@ test-no-keep:
 
 test-coverage:
 	docker compose exec backend bash -c "coverage run manage.py test --settings=config.settings.test --keepdb --parallel --shuffle"
-	docker compose exec backend bash -c "coverage combine || true; coverage xml"
+	docker compose exec backend bash -c 'if compgen -G ".coverage.*" > /dev/null; then coverage combine; else echo "No parallel coverage data files found; skipping coverage combine."; fi'
+	docker compose exec backend bash -c "coverage xml"
 	docker compose cp backend:/app/coverage.xml coverage.xml
 
 dump-db:
