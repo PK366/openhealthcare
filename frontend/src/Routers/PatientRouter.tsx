@@ -104,7 +104,6 @@ export default function PatientRouter() {
           className="flex-1 overflow-y-auto bg-gray-100 focus:outline-hidden md:pb-2 md:pr-2"
         >
           <BrowserWarning />
-          <div className="relative z-10 flex h-16 hsrink-0 bg-white shadow-sm md:hidden">
           <div className="relative z-10 flex h-16 shrink-0 bg-white shadow-sm md:hidden">
             <div className="flex items-center">
               <SidebarTrigger className="px-2" />

@@ -78,6 +78,7 @@ jobs:
 
       - name: Run frontend ESLint on changed files
         if: steps.frontend.outputs.changed == 'true'
+        working-directory: frontend
         shell: bash
         env:
           BASE_SHA: ${{ steps.refs.outputs.base }}
@@ -97,4 +98,9 @@ jobs:
             exit 0
           fi
 
-          npx --prefix frontend eslint "${files[@]}"
+          frontend_files=()
+          for file in "${files[@]}"; do
+            frontend_files+=("${file#frontend/}")
+          done
+
+          npx eslint "${frontend_files[@]}"
