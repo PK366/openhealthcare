@@ -57,15 +57,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build backend image
-        run: |
-          docker buildx build \
-            --file docker/dev.Dockerfile \
-            --tag care_local \
-            --platform linux/arm64 \
-            --load \
-            .
-
       - name: Prepare isolated CI-only backend environment
         shell: bash
         run: |
@@ -95,6 +86,15 @@ jobs:
           WATI_CHANNEL_NUMBER=
           WATI_TEMPLATE_NAME=
           EOF
+
+      - name: Build backend image
+        run: |
+          docker buildx build \
+            --file docker/dev.Dockerfile \
+            --tag care_local \
+            --platform linux/arm64 \
+            --load \
+            .
 
       - name: Start isolated backend services
         run: docker compose up -d --wait
