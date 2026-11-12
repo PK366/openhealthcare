@@ -49,6 +49,13 @@ jobs:
     env:
       COMPOSE_FILE: docker-compose.yaml:docker-compose.local.yaml:docker-compose.ci.yaml
       CI: "true"
+      REACT_CARE_API_URL: http://localhost:9000
+      REACT_APP_TITLE: CARE E2E
+      REACT_APP_META_DESCRIPTION: Frontend end-to-end validation
+      REACT_PUBLIC_URL: http://localhost:4000
+      REACT_APP_COVER_IMAGE: https://example.invalid/cover.png
+      REACT_APP_COVER_IMAGE_ALT: https://example.invalid/cover-alt
+      REACT_RECAPTCHA_SITE_KEY: ci-placeholder
 
     steps:
       - name: Checkout code
@@ -121,13 +128,6 @@ jobs:
         run: npm run build
         env:
           NODE_ENV: production
-          REACT_CARE_API_URL: http://localhost:9000
-          REACT_APP_TITLE: CARE E2E
-          REACT_APP_META_DESCRIPTION: Frontend end-to-end validation
-          REACT_PUBLIC_URL: http://localhost:4000
-          REACT_APP_COVER_IMAGE: https://example.invalid/cover.png
-          REACT_APP_COVER_IMAGE_ALT: https://example.invalid/cover-alt
-          REACT_RECAPTCHA_SITE_KEY: ci-placeholder
 
       - name: Install Playwright Chromium
         working-directory: frontend
@@ -136,8 +136,6 @@ jobs:
       - name: Run Playwright setup project
         working-directory: frontend
         run: npx playwright test --project=setup --workers=1
-        env:
-          REACT_CARE_API_URL: http://localhost:9000
 
       - name: Run Playwright Chromium tests
         working-directory: frontend
