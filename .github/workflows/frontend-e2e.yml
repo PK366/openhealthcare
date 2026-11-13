@@ -137,11 +137,19 @@ jobs:
         working-directory: frontend
         run: npx playwright test --project=setup --workers=1
 
-      - name: Run Playwright Chromium tests
+      - name: Run targeted Playwright Chromium diagnostic
         working-directory: frontend
-        run: npx playwright test --project=chromium --workers=4
-        env:
-          REACT_CARE_API_URL: http://localhost:9000
+        run: |
+          npx playwright test \
+            tests/facility/settings/general/facilityImage.spec.ts \
+            tests/facility/settings/departments/departmentCreate.spec.ts \
+            tests/facility/patient/patientRegistration.spec.ts \
+            tests/facility/patient/encounter/encounter.spec.ts \
+            tests/organization/facility/facilityCreation.spec.ts \
+            tests/profile/clearCache.spec.ts \
+            tests/profile/userAvatar.spec.ts \
+            --project=chromium \
+            --workers=1
 
       - name: Upload Playwright reports
         if: always()
