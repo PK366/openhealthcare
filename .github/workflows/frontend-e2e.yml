@@ -1,0 +1,174 @@
+name: Frontend Playwright E2E
+
+on:
+  pull_request:
+    branches:
+      - staging
+      - develop
+    paths:
+      - "frontend/**"
+      - "care/**"
+      - "config/**"
+      - "scripts/**"
+      - "docker/**"
+      - "docker-compose.yaml"
+      - "docker-compose.local.yaml"
+      - "docker-compose.ci.yaml"
+      - "Pipfile*"
+      - "Makefile"
+      - ".github/workflows/frontend-e2e.yml"
+  push:
+    branches:
+      - staging
+    paths:
+      - "frontend/**"
+      - "care/**"
+      - "config/**"
+      - "scripts/**"
+      - "docker/**"
+      - "docker-compose.yaml"
+      - "docker-compose.local.yaml"
+      - "docker-compose.ci.yaml"
+      - "Pipfile*"
+      - "Makefile"
+      - ".github/workflows/frontend-e2e.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: frontend-e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  playwright:
+    name: Playwright E2E
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    env:
+      COMPOSE_FILE: docker-compose.yaml:docker-compose.local.yaml:docker-compose.ci.yaml
+      CI: "true"
+      REACT_CARE_API_URL: http://localhost:9000
+      REACT_APP_TITLE: CARE E2E
+      REACT_APP_META_DESCRIPTION: Frontend end-to-end validation
+      REACT_PUBLIC_URL: http://localhost:4000
+      REACT_APP_COVER_IMAGE: https://example.invalid/cover.png
+      REACT_APP_COVER_IMAGE_ALT: https://example.invalid/cover-alt
+      REACT_RECAPTCHA_SITE_KEY: ci-placeholder
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Prepare isolated CI-only backend environment
+        shell: bash
+        run: |
+          # Replace the checkout's local env file with disposable CI values.
+          # Never pass developer/UAT integration credentials into this job.
+          cat > docker/.local.env <<'EOF'
+          POSTGRES_USER=postgres
+          POSTGRES_PASSWORD=postgres
+          POSTGRES_HOST=db
+          POSTGRES_DB=care
+          POSTGRES_PORT=5432
+          DATABASE_URL=postgres://postgres:postgres@db:5432/care
+          REDIS_URL=redis://redis:6379/0
+          CELERY_BROKER_URL=redis://redis:6379/0
+          DJANGO_DEBUG=true
+          ATTACH_DEBUGGER=false
+          DJANGO_SECRET_KEY=ci-disposable-secret-not-for-production
+          BUCKET_REGION=ap-south-1
+          BUCKET_KEY=minioadmin
+          BUCKET_SECRET=minioadmin
+          BUCKET_ENDPOINT=http://minio:9000
+          BUCKET_EXTERNAL_ENDPOINT=http://localhost:9100
+          FILE_UPLOAD_BUCKET=patient-bucket
+          FACILITY_S3_BUCKET=facility-bucket
+          WATI_BASE_URL=
+          WATI_ACCESS_TOKEN=
+          WATI_CHANNEL_NUMBER=
+          WATI_TEMPLATE_NAME=
+          EOF
+
+      - name: Build backend image
+        run: |
+          docker buildx build \
+            --file docker/dev.Dockerfile \
+            --tag care_local \
+            --platform linux/arm64 \
+            --load \
+            .
+
+      - name: Start isolated backend services
+        run: docker compose up -d --wait
+
+      - name: Check missing migrations
+        run: make checkmigration
+
+      - name: Load test fixtures
+        run: make load-fixtures
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/.node-version
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend for E2E
+        working-directory: frontend
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright setup project
+        working-directory: frontend
+        run: npx playwright test --project=setup --workers=1
+
+      - name: Run Playwright Chromium tests
+        working-directory: frontend
+        run: npx playwright test --project=chromium --workers=4
+        env:
+          REACT_CARE_API_URL: http://localhost:9000
+
+      - name: Upload Playwright reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-e2e-report
+          path: |
+            frontend/playwright-report/
+            frontend/test-results.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Collect backend service status on failure
+        if: failure()
+        run: |
+          mkdir -p "${{ runner.temp }}/playwright-diagnostics"
+          docker compose ps --all > "${{ runner.temp }}/playwright-diagnostics/compose-ps.txt" 2>&1 || true
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-e2e-diagnostics
+          path: ${{ runner.temp }}/playwright-diagnostics/
+          if-no-files-found: ignore
+          retention-days: 3
+
+      - name: Stop isolated services
+        if: always()
+        run: docker compose down --volumes --remove-orphans || true
