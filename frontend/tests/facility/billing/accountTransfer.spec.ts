@@ -144,24 +144,43 @@ async function createPatient(): Promise<string> {
   if (!geoOrg)
     throw new Error("No govt organization found for geo_organization");
 
-  const res = await fetch(`${getApiUrl()}/api/v1/patient/`, {
-    method: "POST",
-    headers: getApiHeaders(),
-    body: JSON.stringify({
-      name: `Transfer Test ${faker.string.alphanumeric(6)}`,
-      gender: "male",
-      phone_number: phone,
-      date_of_birth: "1990-01-15",
-      geo_organization: geoOrg,
-      identifiers: [],
-    }),
-  });
-  if (!res.ok) {
+  const patientPayload = {
+    name: `Transfer Test ${faker.string.alphanumeric(6)}`,
+    gender: "male",
+    phone_number: phone,
+    date_of_birth: "1990-01-15",
+    geo_organization: geoOrg,
+    identifiers: [],
+  };
+
+  // PatientCreateLock has a 32-second TTL. Retry only its explicit
+  // contention response; do not retry validation or other API failures.
+  const maxAttempts = 8;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const res = await fetch(`${getApiUrl()}/api/v1/patient/`, {
+      method: "POST",
+      headers: getApiHeaders(),
+      body: JSON.stringify(patientPayload),
+    });
+
+    if (res.ok) {
+      const data = (await res.json()) as { id: string };
+      return data.id;
+    }
+
     const text = await res.text();
-    throw new Error(`Failed to create patient: ${res.status} — ${text}`);
+    const isPatientLockContention = text.includes(
+      "Patient creation failed, try again after a while",
+    );
+
+    if (!isPatientLockContention || attempt === maxAttempts) {
+      throw new Error(`Failed to create patient: ${res.status} — ${text}`);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 5000));
   }
-  const data = (await res.json()) as { id: string };
-  return data.id;
+
+  throw new Error("Failed to create patient after lock-contention retries");
 }
 
 test.describe("Account Transfer Payment", () => {
