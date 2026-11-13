@@ -139,6 +139,7 @@ jobs:
 
       - name: Run Playwright Chromium tests
         working-directory: frontend
+        # Diagnostic comparison: single worker vs the initial four-worker run.
         run: npx playwright test --project=chromium --workers=1
         env:
           REACT_CARE_API_URL: http://localhost:9000
