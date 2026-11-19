@@ -2,6 +2,18 @@ name: Deploy OHC CARE UAT (Static Frontends)
 
 on:
   workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to build and deploy (defaults to staging)"
+        required: false
+        default: staging
+        type: string
+  workflow_call:
+    inputs:
+      ref:
+        required: false
+        type: string
+        default: staging
 
 permissions:
   contents: read
@@ -22,7 +34,7 @@ jobs:
       - name: Checkout CARE staging branch
         uses: actions/checkout@v5
         with:
-          ref: staging
+          ref: ${{ inputs.ref }}
           path: care
           persist-credentials: false
 
