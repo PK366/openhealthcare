@@ -6,6 +6,7 @@ on:
       - develop
       - staging
   merge_group:
+  workflow_call:
 
 permissions:
   contents: read
@@ -28,14 +29,27 @@ jobs:
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
           MERGE_GROUP_HEAD_SHA: ${{ github.event.merge_group.head_sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          PUSH_HEAD_SHA: ${{ github.sha }}
         run: |
           if [[ "$EVENT_NAME" == "merge_group" ]]; then
-            echo "base=$MERGE_GROUP_BASE_SHA" >> "$GITHUB_OUTPUT"
-            echo "head=$MERGE_GROUP_HEAD_SHA" >> "$GITHUB_OUTPUT"
+            base="$MERGE_GROUP_BASE_SHA"
+            head="$MERGE_GROUP_HEAD_SHA"
+          elif [[ -n "$PR_BASE_SHA" && -n "$PR_HEAD_SHA" ]]; then
+            base="$PR_BASE_SHA"
+            head="$PR_HEAD_SHA"
           else
-            echo "base=$PR_BASE_SHA" >> "$GITHUB_OUTPUT"
-            echo "head=$PR_HEAD_SHA" >> "$GITHUB_OUTPUT"
+            base="$PUSH_BEFORE_SHA"
+            head="$PUSH_HEAD_SHA"
           fi
+
+          if [[ -z "$base" || -z "$head" || "$base" =~ ^0+$ ]]; then
+            echo "Unable to determine changed-file range for this event." >&2
+            exit 1
+          fi
+
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "head=$head" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-python@v6
         with:
