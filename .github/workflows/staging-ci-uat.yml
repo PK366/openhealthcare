@@ -1,0 +1,46 @@
+name: Staging CI and UAT Static Deployment
+
+on:
+  push:
+    branches:
+      - staging
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-ci-uat-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  backend-tests:
+    name: Backend tests
+    uses: ./.github/workflows/reusable-test.yml
+    with:
+      event_name: push
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  frontend-build:
+    name: Frontend build
+    uses: ./.github/workflows/frontend-build.yml
+
+  frontend-e2e:
+    name: Frontend Playwright E2E
+    uses: ./.github/workflows/frontend-e2e.yml
+
+  lint:
+    name: Python and frontend lint
+    uses: ./.github/workflows/linter.yml
+
+  deploy-uat:
+    name: Deploy static frontend and plugins to UAT
+    needs:
+      - backend-tests
+      - frontend-build
+      - frontend-e2e
+      - lint
+    uses: ./.github/workflows/deploy-uat.yml
+    with:
+      ref: ${{ github.sha }}
+    secrets: inherit
