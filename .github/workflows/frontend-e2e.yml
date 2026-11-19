@@ -17,21 +17,7 @@ on:
       - "Pipfile*"
       - "Makefile"
       - ".github/workflows/frontend-e2e.yml"
-  push:
-    branches:
-      - staging
-    paths:
-      - "frontend/**"
-      - "care/**"
-      - "config/**"
-      - "scripts/**"
-      - "docker/**"
-      - "docker-compose.yaml"
-      - "docker-compose.local.yaml"
-      - "docker-compose.ci.yaml"
-      - "Pipfile*"
-      - "Makefile"
-      - ".github/workflows/frontend-e2e.yml"
+  workflow_call:
   workflow_dispatch:
 
 concurrency:
