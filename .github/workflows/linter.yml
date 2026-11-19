@@ -59,6 +59,10 @@ jobs:
         run: python -m pip install pre-commit
 
       - name: Run Python and repository hooks
+        env:
+          # This hook protects local commits to protected branches. CI intentionally
+          # checks out the target branch, so skip only this local-workflow guard here.
+          SKIP: no-commit-to-branch
         run: |
           pre-commit run --show-diff-on-failure --color=always \
             --from-ref "${{ steps.refs.outputs.base }}" \
