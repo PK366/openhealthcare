@@ -38,13 +38,9 @@ jobs:
           path: care
           persist-credentials: false
 
-      - name: Checkout pinned ABDM plugin
-        uses: actions/checkout@v5
-        with:
-          repository: ohcnetwork/care_abdm_fe
-          ref: 0f96451ee989e89880870fdffd170cc19c84cfa7
-          path: plugins/care_abdm_fe
-          persist-credentials: false
+      # ABDM is intentionally excluded from this deployment.
+      # Keep the existing UAT /opt/openhealthcare/care_abdm_fe build untouched
+      # until the pinned source repository can be checked out by GitHub Actions.
 
       - name: Checkout pinned EKA Scribe plugin
         uses: actions/checkout@v5
@@ -69,7 +65,6 @@ jobs:
           cache: npm
           cache-dependency-path: |
             care/frontend/package-lock.json
-            plugins/care_abdm_fe/package-lock.json
             plugins/care_eka_scribe_fe/package-lock.json
             plugins/care_excalidraw_fe/package-lock.json
 
@@ -100,15 +95,6 @@ jobs:
           npm run build
 
           test -s build/index.html
-
-      - name: Build ABDM plugin
-        working-directory: plugins/care_abdm_fe
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm ci
-          npm run build
-          test -s dist/assets/remoteEntry.js
 
       - name: Build EKA Scribe plugin
         working-directory: plugins/care_eka_scribe_fe
@@ -160,17 +146,14 @@ jobs:
           RELEASE_DIR="$RUNNER_TEMP/uat-release"
           mkdir -p \
             "$RELEASE_DIR/frontend" \
-            "$RELEASE_DIR/care_abdm_fe" \
             "$RELEASE_DIR/care_eka_scribe_fe" \
             "$RELEASE_DIR/care_excalidraw_fe"
 
           cp -a care/frontend/build/. "$RELEASE_DIR/frontend/"
-          cp -a plugins/care_abdm_fe/dist/. "$RELEASE_DIR/care_abdm_fe/"
           cp -a plugins/care_eka_scribe_fe/dist/. "$RELEASE_DIR/care_eka_scribe_fe/"
           cp -a plugins/care_excalidraw_fe/dist/. "$RELEASE_DIR/care_excalidraw_fe/"
 
           test -s "$RELEASE_DIR/frontend/index.html"
-          test -s "$RELEASE_DIR/care_abdm_fe/assets/remoteEntry.js"
           test -s "$RELEASE_DIR/care_eka_scribe_fe/assets/remoteEntry.js"
           test -s "$RELEASE_DIR/care_excalidraw_fe/assets/remoteEntry.js"
 
@@ -231,7 +214,6 @@ jobs:
 
           for component in \
             frontend \
-            care_abdm_fe \
             care_eka_scribe_fe \
             care_excalidraw_fe
           do
@@ -264,12 +246,13 @@ jobs:
 
           declare -A TARGETS=(
             [frontend]="$BASE/frontend/build"
-            [care_abdm_fe]="$BASE/care_abdm_fe"
             [care_eka_scribe_fe]="$BASE/care_eka_scribe_fe"
             [care_excalidraw_fe]="$BASE/care_excalidraw_fe"
           )
 
-          for component in frontend care_abdm_fe care_eka_scribe_fe care_excalidraw_fe; do
+          COMPONENTS=(frontend care_eka_scribe_fe care_excalidraw_fe)
+
+          for component in "${COMPONENTS[@]}"; do
             test -d "${TARGETS[$component]}" || {
               echo "Missing live target: ${TARGETS[$component]}"
               exit 1
@@ -283,7 +266,7 @@ jobs:
           mkdir -p "$BACKUP"
 
           # Back up every live directory before changing any live file.
-          for component in frontend care_abdm_fe care_eka_scribe_fe care_excalidraw_fe; do
+          for component in "${COMPONENTS[@]}"; do
             mkdir -p "$BACKUP/$component"
             cp -a "${TARGETS[$component]}/." "$BACKUP/$component/"
           done
@@ -292,7 +275,7 @@ jobs:
             rc=$?
             trap - ERR
             echo "Deployment failed (exit $rc). Restoring previous static files..."
-            for component in frontend care_abdm_fe care_eka_scribe_fe care_excalidraw_fe; do
+            for component in "${COMPONENTS[@]}"; do
               if [ -d "$BACKUP/$component" ]; then
                 rsync -a --delete \
                   "$BACKUP/$component/" \
@@ -306,7 +289,7 @@ jobs:
 
           # Deliberately do not use --delete on the first deployment.
           # This preserves any uninspected files already present in live directories.
-          for component in frontend care_abdm_fe care_eka_scribe_fe care_excalidraw_fe; do
+          for component in "${COMPONENTS[@]}"; do
             rsync -rlt --no-perms --no-owner --no-group \
               "$STAGE/$component/" \
               "${TARGETS[$component]}/"
@@ -314,12 +297,11 @@ jobs:
 
           # Basic on-disk smoke checks; no backend, DB, or systemd changes.
           test -s "${TARGETS[frontend]}/index.html"
-          test -s "${TARGETS[care_abdm_fe]}/assets/remoteEntry.js"
           test -s "${TARGETS[care_eka_scribe_fe]}/assets/remoteEntry.js"
           test -s "${TARGETS[care_excalidraw_fe]}/assets/remoteEntry.js"
 
           trap - ERR
-          echo "Static frontend deployment completed."
+          echo "Static frontend deployment completed (ABDM preserved unchanged)."
           echo "Backup retained at: $BACKUP"
           rm -rf -- "$STAGE"
           REMOTE_SCRIPT
